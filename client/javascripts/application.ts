@@ -8,7 +8,7 @@
 
 "use strict";
 
-let Application: any = angular.module('Application',['Controllers','Providers']);
+let Application: any = angular.module('Application',['ngMaterial','Controllers','Providers']);
 
 Application.config(['ShapeEditProvider', function (ShapeEditProvider:any):void {
     ShapeEditProvider.configure({

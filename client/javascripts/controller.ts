@@ -34,68 +34,10 @@ namespace ControllerModule {
                 if (!opened) {
                     let file: any = e.dataTransfer.files[0];
                     ipc.send('open', file.path);
+                    opened = true;
                 }
                 return false;
             };
-
-
-
-            ShapeEdit.onDrop((shape: ShapeEdit.BaseShape, e: any): void => {
-                if (opened) {
-                    if (e.dataTransfer.files.length == 0) {
-                        var url = e.dataTransfer.getData('url');
-                        if (url != "") {
-                            var image = new Image();
-                            image.crossOrigin = 'Anonymous';
-                            // for url load error detect.
-                            //image.setAttribute('crossOrigin', 'anonymous');
-                            image.onload = (ex: any): void => {                            // URLがイメージとしてロード可能
-                                var w = ex.target.width;
-                                var h = ex.target.height;
-                                let obj = {
-                                    rectangle: new ShapeEdit.Rectangle(e.offsetX - (w / 2), e.offsetY - (h / 2), w, h),
-                                    property: new ShapeEdit.ShapeProperty(ShapeEdit.Canvas, '', [], url, new ShapeEdit.RGBAColor(255, 255, 255, 1), new ShapeEdit.RGBAColor(0, 0, 0, 1), 9, new ShapeEdit.Font("normal", "normal", "normal", 18, "sans-serif", []), "", "miter", {
-                                        "category": "",
-                                        "type": "meter"
-                                    })
-                                };
-
-                                ShapeEdit.Canvas.Add(new ShapeEdit.ImageRect(ShapeEdit.Canvas, obj));
-                            };
-                            image.onerror = (): void => {                           // URLがイメージとしてロード不可能
-                            };
-                            image.src = url;
-                        }
-                    } else {
-                        let file: any = e.dataTransfer.files[0];
-                        let reader: any = new FileReader();
-                        reader.onload = ((theFile) => {
-
-                            return (ex) => {
-                                let img = new Image();
-                                img.onload = (): void => {
-                                    let w = img.width;
-                                    let h = img.height;
-                                    let url = ex.target.result;
-                                    let obj = {
-                                        rectangle: new ShapeEdit.Rectangle(e.offsetX - (w / 2), e.offsetY - (h / 2), w, h),
-                                        property: new ShapeEdit.ShapeProperty(ShapeEdit.Canvas, '', [], url, new ShapeEdit.RGBAColor(255, 255, 255, 1), new ShapeEdit.RGBAColor(0, 0, 0, 1), 9, new ShapeEdit.Font("normal", "normal", "normal", 18, "sans-serif", []), "", "miter", {
-                                            "category": "",
-                                            "type": "meter"
-                                        })
-                                    };
-                                    ShapeEdit.Canvas.Add(new ShapeEdit.ImageRect(ShapeEdit.Canvas, obj));
-                                };
-                                img.src = ex.target.result;
-                            };
-                        })(file);
-                        reader.readAsDataURL(file);
-                    }
-
-                }
-            });
-
-
 
 
             /*
@@ -165,6 +107,8 @@ namespace ControllerModule {
                 ipc.send('value', ShapeEdit.Serialize());
             });
 
+
+            //shapes
             ipc.on('add', (event: any, msg: any): void => {
                 $scope.$evalAsync(($scope): void => {
                     switch (msg) {
@@ -174,6 +118,9 @@ namespace ControllerModule {
                         case "rect":
                             AddBox();
                             break;
+                        case "oval":
+                            AddOval();
+                            break;
                         case "bezier":
                             AddBezier();
                             break;
@@ -181,11 +128,9 @@ namespace ControllerModule {
                             AddImage();
                             break;
                         default:
-                            ;
                     }
                 });
             });
-
 
             let AddText = (): void => {
                 let obj = {
@@ -209,6 +154,18 @@ namespace ControllerModule {
                 };
                 var box = new ShapeEdit.Box(ShapeEdit.Canvas, obj);
                 ShapeEdit.Canvas.Add(box);
+            };
+
+            let AddOval = (): void => {
+                let obj = {
+                    rectangle: new ShapeEdit.Rectangle(200, 200, 100, 100),
+                    property: new ShapeEdit.ShapeProperty(ShapeEdit.Canvas, '', [], '', new ShapeEdit.RGBAColor(0, 0, 0, 1), new ShapeEdit.RGBAColor(98, 76, 54, 1), 1, new ShapeEdit.Font("normal", "normal", "normal", 18, "sans-serif", []), "left", "miter", {
+                        "category": "",
+                        "type": ""
+                    })
+                };
+                let rect = new ShapeEdit.Oval(ShapeEdit.Canvas, obj);
+                ShapeEdit.Canvas.Add(rect);
             };
 
             let AddBezier = (): void => {
@@ -243,12 +200,13 @@ namespace ControllerModule {
                 ShapeEdit.Canvas.Add(image);
             };
 
+            ipc.on('delete', (event: any, msg: any): void => {
+                $scope.$evalAsync(($scope): void => {
+                    ShapeEdit.Canvas.DeleteSelected();
+                });
+            });
 
-
-
-
-
-
+            //mode
             ipc.on('mode', (event: any, msg: any): void => {
                 $scope.$evalAsync(($scope): void => {
                     ChangeEditMode(msg);
@@ -270,6 +228,259 @@ namespace ControllerModule {
                         break;
                 }
             };
+
+            // arrange
+            ipc.on('arrange', (event: any, msg: any): void => {  //ping-pong pattern
+                $scope.$evalAsync(($scope): void => {
+                switch (msg) {
+                    case "top":
+                        ToTop();
+                        break;
+                    case "bottom":
+                        ToBottom();
+                        break;
+                    case "lock":
+                        Lock();
+                        break;
+                    case "unlock":
+                        UnLockAll();
+                        break;
+                    case "group":
+                        Group();
+                        break;
+                    case "ungroup":
+                        Ungroup();
+                        break;
+                    default:
+                }
+                });
+            });
+
+            let ToTop = (): void => {
+                ShapeEdit.Canvas.ToTop();
+            };
+
+            let ToBottom = (): void => {
+                ShapeEdit.Canvas.ToBottom();
+            };
+
+            let Lock = (): void => {
+                ShapeEdit.Canvas.Lock();
+            };
+
+            let UnLockAll = (): void => {
+                ShapeEdit.Canvas.UnLockAll();
+            };
+
+            let Group = (): void => {
+                ShapeEdit.Canvas.Group();
+            };
+
+            let Ungroup = (): void => {
+                ShapeEdit.Canvas.Ungroup();
+            };
+
+
+
+
+
+
+
+            let Select: (shape: any) => void = (shape: any): void => {
+                let property: any = shape.Property();
+                let fields: any = property.description["field"];
+                $scope.fields = fields;
+                $scope.fills = shape.FillColor().RGB();
+                $scope.strokefills = shape.StrokeColor().RGB();
+                $scope.fontsize = shape.FontSize();
+                $scope.FontKeyword = shape.FontKeyword();
+                $scope.FontWeight = shape.FontWeight();
+                $scope.FontVariant = shape.FontVariant();
+                $scope.FontStyle = shape.FontStyle();
+                $scope.path = property.path;
+            };
+
+            ShapeEdit.onTick((shape: ShapeEdit.BaseShape, context: any): any => {
+                return context;
+            });
+
+            ShapeEdit.onDraw((shape: ShapeEdit.BaseShape, context: any): void => {
+
+            });
+
+            ShapeEdit.onNew((shape: ShapeEdit.BaseShape): void => {
+                switch (shape.type) {
+                    case "Text":
+                    case "Box":
+                    case "Oval":
+                    case "Polygon" :
+                    case "Bezier" :
+                    case "Shapes":
+                    case "ImageRect":
+                }
+            });
+
+            ShapeEdit.onDelete((shape: ShapeEdit.BaseShape): void => {
+            });
+
+            ShapeEdit.onSelect((shape: ShapeEdit.BaseShape, context: any): void => {
+                // for inPlace text input
+
+                if (ShapeEdit.Canvas.SelectedCount() === 1) {
+                    if (shape.Parent().IsRoot()) {
+
+                        switch (shape.type) {
+                            case "Text" :                                               //for inPlace Input  only Text
+                                $scope.$evalAsync(   // $apply
+                                    function ($scope) {
+                                        let id: any = shape.ID();
+                                        $scope.id = id;
+                                        $scope.text = shape.Property().text;
+                                        Select(shape);
+                                        $scope.SelectType = "Text";
+                                    }
+                                );
+                                break;
+                            case "Box":
+                            case "Oval":
+                            case "Polygon" :
+                            case "Bezier" :
+                            case "Shapes":
+                            case "ImageRect": {
+                                $scope.$evalAsync(   // $apply
+                                    function ($scope) {
+                                        let id: any = shape.ID();
+                                        $scope.id = id;
+                                        $scope.text = shape.Property().text;
+                                        Select(shape);
+                                        $scope.SelectType = "Image";
+                                    }
+                                );
+                            }
+                                break;
+
+                            default:
+                        }
+                    }
+                } else {
+     //               EditClear();     // for inPlace text input
+                }
+            });
+
+            ShapeEdit.onDeselect((shape: ShapeEdit.BaseShape, context: any): void => {
+                switch (shape.type) {
+                    case "Text" :
+                    case "Box":
+                    case "Oval":
+                    case "Polygon" :
+                    case "Bezier" :
+                    case "ImageRect":
+                        $scope.SelectImage = false;
+                        break;
+                    default:
+                }
+            });
+
+            ShapeEdit.onMove((shape: ShapeEdit.BaseShape): void => {
+            });
+
+            ShapeEdit.onResize((shape: ShapeEdit.BaseShape): void => {
+            });
+
+            ShapeEdit.onDeformation((shape: ShapeEdit.BaseShape): void => {
+            });
+
+            ShapeEdit.onChange((): void => {
+            });
+
+            ShapeEdit.onKeydown((shape: ShapeEdit.BaseShape, e: any): void => {
+            });
+
+            ShapeEdit.onDrop((shape: ShapeEdit.BaseShape, e: any): void => {
+                if (opened) {
+                    if (e.dataTransfer.files.length == 0) {
+                        var url = e.dataTransfer.getData('url');
+                        if (url != "") {
+                            var image = new Image();
+                            //image.crossOrigin = 'Anonymous';
+                            // for url load error detect.
+                            //image.setAttribute('crossOrigin', 'anonymous');
+                            image.onload = (ex: any): void => {                            // URLがイメージとしてロード可能
+                                var w = ex.target.width;
+                                var h = ex.target.height;
+                                let obj = {
+                                    rectangle: new ShapeEdit.Rectangle(e.offsetX - (w / 2), e.offsetY - (h / 2), w, h),
+                                    property: new ShapeEdit.ShapeProperty(ShapeEdit.Canvas, '', [], url, new ShapeEdit.RGBAColor(255, 255, 255, 1), new ShapeEdit.RGBAColor(0, 0, 0, 1), 9, new ShapeEdit.Font("normal", "normal", "normal", 18, "sans-serif", []), "", "miter", {
+                                        "category": "",
+                                        "type": "meter"
+                                    })
+                                };
+
+                                ShapeEdit.Canvas.Add(new ShapeEdit.ImageRect(ShapeEdit.Canvas, obj));
+                            };
+                            image.onerror = (e): void => {                           // URLがイメージとしてロード不可能
+                                let hoge = e;
+                            };
+                            image.src = url;
+                        }
+                    } else {
+                        let file: any = e.dataTransfer.files[0];
+                        let reader: any = new FileReader();
+                        reader.onload = ((theFile) => {
+
+                            return (ex) => {
+                                let img = new Image();
+                                img.onload = (): void => {
+                                    let w = img.width;
+                                    let h = img.height;
+                                    let url = ex.target.result;
+                                    let obj = {
+                                        rectangle: new ShapeEdit.Rectangle(e.offsetX - (w / 2), e.offsetY - (h / 2), w, h),
+                                        property: new ShapeEdit.ShapeProperty(ShapeEdit.Canvas, '', [], url, new ShapeEdit.RGBAColor(255, 255, 255, 1), new ShapeEdit.RGBAColor(0, 0, 0, 1), 9, new ShapeEdit.Font("normal", "normal", "normal", 18, "sans-serif", []), "", "miter", {
+                                            "category": "",
+                                            "type": "meter"
+                                        })
+                                    };
+                                    ShapeEdit.Canvas.Add(new ShapeEdit.ImageRect(ShapeEdit.Canvas, obj));
+                                };
+                                img.src = ex.target.result;
+                            };
+                        })(file);
+                        reader.readAsDataURL(file);
+                    }
+
+                }
+            });
+
+
+            let changeText = (): void => {
+                if (ShapeEdit.Canvas) {
+                    ShapeEdit.Canvas.SetCurrentText($scope.text);
+                }
+            };
+
+
+
+
+
+            let Copy = (): void => {
+                ShapeEdit.Canvas.Copy();
+            };
+
+            let Paste = (): void => {
+                ShapeEdit.Canvas.Paste();
+            };
+
+
+            $scope.changeText = changeText;
+            $scope.ToTop = ToTop;
+            $scope.ToBottom = ToBottom;
+            $scope.Lock = Lock;
+            $scope.UnLockAll = UnLockAll;
+            $scope.Group = Group;
+            $scope.Ungroup = Ungroup;
+            $scope.Copy = Copy;
+            $scope.Paste = Paste;
 
             /*
              let EditClear: () => void = (): void => {
@@ -303,47 +514,13 @@ namespace ControllerModule {
              $scope.path = property.path;
              };
 
-             let changeText = (): void => {
-             if (ShapeEdit.Canvas) {
-             ShapeEdit.Canvas.SetCurrentText($scope.text);
-             }
-             };
 
              let IsOpen = (): boolean => {
              return ShapeEdit.IsOpen;
              };
 
-             let ToTop = () => {
-             ShapeEdit.Canvas.ToTop();
-             };
 
-             let ToBottom = () => {
-             ShapeEdit.Canvas.ToBottom();
-             };
 
-             let Lock = () => {
-             ShapeEdit.Canvas.Lock();
-             };
-
-             let UnLockAll = () => {
-             ShapeEdit.Canvas.UnLockAll();
-             };
-
-             let Group = () => {
-             ShapeEdit.Canvas.Group();
-             };
-
-             let Ungroup = () => {
-             ShapeEdit.Canvas.Ungroup();
-             };
-
-             let Copy = () => {
-             ShapeEdit.Canvas.Copy();
-             };
-
-             let Paste = () => {
-             ShapeEdit.Canvas.Paste();
-             };
 
              let Create = (): void => {
 
@@ -500,17 +677,6 @@ namespace ControllerModule {
 
 
 
-             let AddOval = (): void => {
-             var obj = {
-             rectangle: new ShapeEdit.Rectangle(200, 200, 100, 100),
-             property: new ShapeEdit.ShapeProperty(ShapeEdit.Canvas, '', [], '', new ShapeEdit.RGBAColor(0, 0, 0, 1), new ShapeEdit.RGBAColor(98, 76, 54, 1), 1, new ShapeEdit.Font("normal", "normal", "normal", 18, "sans-serif", []), "left", "miter", {
-             "category": "",
-             "type": ""
-             })
-             };
-             var rect = new ShapeEdit.Oval(ShapeEdit.Canvas, obj);
-             ShapeEdit.Canvas.Add(rect);
-             };
 
 
 
@@ -518,225 +684,24 @@ namespace ControllerModule {
 
 
 
-             let DeleteSelected = (): void => {
-             ShapeEdit.Canvas.DeleteSelected();
-             };
 
              let SelectedCount = (): number => {
              return ShapeEdit.Canvas.SelectedCount();
              };
 
-             ShapeEdit.onTick((shape: ShapeEdit.BaseShape, context: any): any => {
-             return context;
-             });
-
-             ShapeEdit.onDraw((shape: ShapeEdit.BaseShape, context: any): void => {
-
-             });
-
-             ShapeEdit.onNew((shape: ShapeEdit.BaseShape): void => {
-             switch (shape.type) {
-             case "Text": {
-             shape.Property().description["field"] = {
-             text: {
-             label: "text",  // shape.ID(),
-             type: "text",
-             mode: "static",
-             validate: {required: true, "ng-maxlength": 50, "ng-minlength": 10},
-             options: [],
-             events: {onChange: ""},
-             lookup: ""
-             },
-             color: {
-             label: "color",
-             type: "color",
-             mode: "static",
-             validate: {required: true, "ng-maxlength": 7, "ng-minlength": 7},
-             options: [],
-             events: {onChange: ""},
-             lookup: ""
-             }
-             };
-             }
-             break;
-             case "Box":
-             case "Oval":
-             case "Polygon" :
-             case "Bezier" :
-             case "Shapes": {
-             shape.Property().description["field"] = {
-             color: {
-             label: "color",
-             type: "color",
-             mode: "static",
-             validate: {required: true, "ng-maxlength": 7, "ng-minlength": 7},
-             options: [],
-             events: {onChange: ""},
-             lookup: ""
-             }
-             };
-             }
-             break;
-             case "ImageRect": {
-             shape.Property().description["field"] = {
-             text: {
-             label: "text",  // shape.ID(),
-             type: "text",
-             mode: "static",
-             validate: {required: true, "ng-maxlength": 50, "ng-minlength": 10},
-             options: [],
-             events: {onChange: ""},
-             lookup: ""
-             }
-             };
-             }
-             }
-             });
 
 
 
-             ShapeEdit.onDelete((shape: ShapeEdit.BaseShape): void => {
-             });
 
-             ShapeEdit.onSelect((shape: ShapeEdit.BaseShape, context: any): void => {
-             // for inPlace text input
 
-             if (ShapeEdit.Canvas.SelectedCount() === 1) {
-             if (shape.Parent().IsRoot()) {
-
-             switch (shape.type) {
-             case "Text" :                                               //for inPlace Input  only Text
-             $scope.$evalAsync(   // $apply
-             function ($scope) {
-             let id: any = shape.ID();
-             $scope.id = id;
-             $scope.text = shape.Property().text;
-             Select(shape);
-             $scope.SelectType = "Text";
-             }
-             );
-             break;
-             case "Box":
-             case "Oval":
-             case "Polygon" :
-             case "Bezier" :
-             case "Shapes":
-             case "ImageRect": {
-             $scope.$evalAsync(   // $apply
-             function ($scope) {
-             let id: any = shape.ID();
-             $scope.id = id;
-             Select(shape);
-             $scope.SelectType = "Image";
-             }
-             );
-             }
-             break;
-
-             default:
-             }
-             }
-             } else {
-             EditClear();     // for inPlace text input
-             }
-             });
-
-             ShapeEdit.onDeselect((shape: ShapeEdit.BaseShape, context: any): void => {
-             switch (shape.type) {
-             case "Text" :
-             case "Box":
-             case "Oval":
-             case "Polygon" :
-             case "Bezier" :
-             case "ImageRect":
-             $scope.SelectImage = false;
-             break;
-             default:
-             }
-             });
-
-             ShapeEdit.onMove((shape: ShapeEdit.BaseShape): void => {
-             });
-
-             ShapeEdit.onResize((shape: ShapeEdit.BaseShape): void => {
-             });
-
-             ShapeEdit.onDeformation((shape: ShapeEdit.BaseShape): void => {
-             });
-
-             ShapeEdit.onChange((): void => {
-
-             });
-
-             ShapeEdit.onKeydown((shape: ShapeEdit.BaseShape, e: any): void => {
-
-             });
-
-             ShapeEdit.onDrop((shape: ShapeEdit.BaseShape, e: any): void => {
-             if (e.dataTransfer.files.length == 0) {
-             var url = e.dataTransfer.getData('url');
-             if (url != "") {
-             var image = new Image();
-             image.crossOrigin = 'Anonymous';
-             // for url load error detect.
-             //image.setAttribute('crossOrigin', 'anonymous');
-             image.onload = (ex: any): void => {                            // URLがイメージとしてロード可能
-             var w = ex.target.width;
-             var h = ex.target.height;
-             let obj = {
-             rectangle: new ShapeEdit.Rectangle(e.offsetX - (w / 2), e.offsetY - (h / 2), w, h),
-             property: new ShapeEdit.ShapeProperty(ShapeEdit.Canvas, '', [], url, new ShapeEdit.RGBAColor(255, 255, 255, 1), new ShapeEdit.RGBAColor(0, 0, 0, 1), 9, new ShapeEdit.Font("normal", "normal", "normal", 18, "sans-serif", []), "", "miter", {
-             "category": "",
-             "type": "meter"
-             })
-             };
-
-             ShapeEdit.Canvas.Add(new ShapeEdit.ImageRect(ShapeEdit.Canvas, obj));
-             };
-             image.onerror = (): void => {                           // URLがイメージとしてロード不可能
-             };
-             image.src = url;
-             }
-             } else {
-             let file: any = e.dataTransfer.files[0];
-             let reader: any = new FileReader();
-             reader.onload = ((theFile) => {
-
-             return (ex) => {
-             let img = new Image();
-             img.onload = (): void => {
-             let w = img.width;
-             let h = img.height;
-             let url = ex.target.result;
-             let obj = {
-             rectangle: new ShapeEdit.Rectangle(e.offsetX - (w / 2), e.offsetY - (h / 2), w, h),
-             property: new ShapeEdit.ShapeProperty(ShapeEdit.Canvas, '', [], url, new ShapeEdit.RGBAColor(255, 255, 255, 1), new ShapeEdit.RGBAColor(0, 0, 0, 1), 9, new ShapeEdit.Font("normal", "normal", "normal", 18, "sans-serif", []), "", "miter", {
-             "category": "",
-             "type": "meter"
-             })
-             };
-             ShapeEdit.Canvas.Add(new ShapeEdit.ImageRect(ShapeEdit.Canvas, obj));
-             };
-             img.src = ex.target.result;
-             };
-             })(file);
-             reader.readAsDataURL(file);
-             }
-             });
 
              $scope.opened = false;
              $scope.IsOpen = IsOpen;
              $scope.editmode = "move";
 
-             $scope.changeText = changeText;
-             $scope.ToTop = ToTop;
-             $scope.ToBottom = ToBottom;
-             $scope.Lock = Lock;
-             $scope.UnLockAll = UnLockAll;
-             $scope.Group = Group;
-             $scope.Ungroup = Ungroup;
-             $scope.Copy = Copy;
-             $scope.Paste = Paste;
+
+
+
              $scope.Create = Create;
              $scope.Open = Open;
              $scope.Update = Update;
@@ -764,7 +729,6 @@ namespace ControllerModule {
              $scope.AddOval = AddOval;
              $scope.AddBezier = AddBezier;
              $scope.AddImage = AddImage;
-             $scope.hoge1 = hoge1;
              $scope.DeleteSelected = DeleteSelected;
              $scope.SelectedCount = SelectedCount;
 

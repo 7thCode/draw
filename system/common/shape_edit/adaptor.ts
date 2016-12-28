@@ -23,6 +23,8 @@ namespace Adaptor {
         var fs = require('fs');
         var Q = require('q');
         var crypto = require('crypto');
+
+        //   var rp = require('request-promise');
     }
 
     export class SVGAdaptor {
@@ -43,6 +45,11 @@ namespace Adaptor {
                 bezier += " C " + startpoint.controlPoint0.x + "," + startpoint.controlPoint0.y + " " + startpoint.controlPoint1.x + "," + startpoint.controlPoint1.y + " " + startpoint.x + "," + startpoint.y;
             });
             bezier += '" />';
+
+            let path = "";
+            if (data.property.path) {
+                path = data.property.path;
+            }
 
             let defs = '<defs>' +
                 '<pattern id="' + data.ID() + '_IMAGE" width="' + this.tilesizew + '" height="' + this.tilesizeh + '" patternUnits="userSpaceOnUse">' +
@@ -243,6 +250,7 @@ namespace Adaptor {
             }, (vertex) => {
                 this.doc.bezierCurveTo(vertex.controlPoint0.x, vertex.controlPoint0.y, vertex.controlPoint1.x, vertex.controlPoint1.y, vertex.x, vertex.y);
             });
+
             this.doc.bezierCurveTo(startpoint.controlPoint0.x, startpoint.controlPoint0.y, startpoint.controlPoint1.x, startpoint.controlPoint1.y, startpoint.x, startpoint.y);
             this.doc.lineWidth(data.property.strokewidth);
             this.doc.fillAndStroke(data.property.fillstyle.RGB(), data.property.strokestyle.RGB());
@@ -272,6 +280,7 @@ namespace Adaptor {
         public Text(data: any, callback: (error: any) => void): void {
             let text: string = '';
             let defs: string = '';
+
             if (data) {
                 if (data.property) {
                     if (data.property.font) {
@@ -318,22 +327,28 @@ namespace Adaptor {
         }
 
         public ImageRect(data: any, callback: (error: any) => void): void {
+
             let _doc = this.doc;
+
             let path = "";
             if (data.property.path) {
                 path = data.property.path;
             }
+
             let _url = url.parse(path);
             let protocol = _url.protocol;
             let temp_path = this.path;
             if (protocol == "data:") { // inplace
+
                 let md5hash = crypto.createHash('md5');
                 md5hash.update(path, 'binary');
                 let file_name = md5hash.digest('hex');  // generate unique filename.
+
                 let regex = /^data:.+\/(.+);base64,(.*)$/;
                 let matches = path.match(regex);
                 let ext = matches[1];
                 if (ext == "jpg" || ext == "jpeg" || ext == "png") { // for pdfkit
+
                     // dataToImage
                     let content = matches[2];
                     let buffer = new Buffer(content, 'base64');
@@ -356,14 +371,17 @@ namespace Adaptor {
                             callback(error);
                         }
                     })
+
                 } else {
                     callback({code: 0, message: "image format not support for PDF :" + ext});
                 }
+
             } else { // remote file
                 let split_path = _url.pathname.split("/");
                 let file_name = split_path[split_path.length - 1];
                 let split_filename = file_name.split(/\.(?=[^.]+$)/);
                 let ext = split_filename[split_filename.length - 1];
+
                 if (ext == "jpg" || ext == "jpeg" || ext == "png") { // for pdfkit
                     let buffer = [];
                     request.get(path, {timeout: 1500}, (error: any): void => { //Only for timeout check
@@ -373,6 +391,7 @@ namespace Adaptor {
                                 res.on('data', (chunk: any): void => {
                                     buffer += chunk;
                                 });
+
                                 res.on('end', () => {
                                     let target_file_path = temp_path + "/" + file_name;
                                     fs.writeFile(target_file_path, buffer, 'binary', (error: any): void => {
@@ -389,6 +408,7 @@ namespace Adaptor {
                                     })
                                 })
                             });
+
                             innner_req.on('error', (e: any): void => {
                                 callback(e);
                             })
@@ -403,9 +423,11 @@ namespace Adaptor {
         }
 
         public Shapes(data: any, callback: (error: any) => void): void {
+
             let draw = (shape: any): any => {
                 return (): any => {
                     return new Promise((resolve: any, reject: any): void => {
+
                         shape.ToPDF((error): void => {
                             if (!error) {
                                 resolve(null);

@@ -15,6 +15,8 @@ const Menu = electron.Menu;
 let mainWindow = null;
 let mainModule = require('./system/main.js');
 
+app.commandLine.appendSwitch("--enable-experimental-web-platform-features");
+
 let ipc = electron.ipcMain;
 let template = [
     {
@@ -22,7 +24,11 @@ let template = [
         submenu: [
             {label: "About Application", selector: "orderFrontStandardAboutPanel:"},
             {type: "separator"},
-            {label: "Quit", accelerator: "Command+Q", click: () => {app.quit();}}
+            {
+                label: "Quit", accelerator: "Command+Q", click: () => {
+                app.quit();
+            }
+            }
         ]
     },
     {
@@ -47,7 +53,9 @@ let template = [
             {label: "Cut", accelerator: "CmdOrCtrl+X", selector: "cut:"},
             {label: "Copy", accelerator: "CmdOrCtrl+C", selector: "copy:"},
             {label: "Paste", accelerator: "CmdOrCtrl+V", selector: "paste:"},
-            {label: "Select All", accelerator: "CmdOrCtrl+A", selector: "selectAll:"}
+            {label: "Select All", accelerator: "CmdOrCtrl+A", selector: "selectAll:"},
+            {type: "separator"},
+            {label: "Delete", click: () => onDeleteShapeClicked()},
         ]
     },
     {
@@ -69,7 +77,18 @@ let template = [
                     {label: 'image', click: () => onAddShapeClicked('image')},
                     {label: 'bezier', click: () => onAddShapeClicked('bezier')}
                 ]
-            },
+            }
+        ]
+    },
+    {
+        label: 'Arrange',
+        submenu: [
+            {label: 'ToTop', click: () => onArrangeClicked('top')},
+            {label: 'ToBottom', click: () => onArrangeClicked('bottom')},
+            {label: 'Lock', click: () => onArrangeClicked('lock')},
+            {label: 'UnLockAll', click: () => onArrangeClicked('unlock')},
+            {label: 'Group', click: () => onArrangeClicked('group')},
+            {label: 'Ungroup', click: () => onArrangeClicked('ungroup')},
             {
                 label: 'Reload', accelerator: 'Command+R', click: function () {
                 BrowserWindow.getFocusedWindow().reloadIgnoringCache();
@@ -82,6 +101,8 @@ let template = [
             }
         ]
     }
+
+
 ];
 
 let menu = Menu.buildFromTemplate(template);
@@ -100,7 +121,7 @@ let main = new mainModule.Main();
 
 function openWindow() {
     mainWindow = new BrowserWindow({
-        width: 1024,
+        width: 1280,
         height: 800,
         webPreferences: {
             nodeIntegration: true
@@ -206,8 +227,16 @@ function onRedoClicked(): void {
     mainWindow.webContents.send('redo', '');
 }
 
+function onArrangeClicked(shape: string): void {
+    mainWindow.webContents.send('arrange', shape);
+}
+
 function onAddShapeClicked(shape: string): void {
     mainWindow.webContents.send('add', shape);
+}
+
+function onDeleteShapeClicked(): void {
+    mainWindow.webContents.send('delete', null);
 }
 
 function onModeClicked(mode: string): void {
@@ -227,6 +256,7 @@ ipc.on('open', (event: any, filename: string): void => { //ping-pong
 
     mainWindow.webContents.send('open', main.open_as(filename));
 });
+
 
 app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') {
@@ -268,5 +298,6 @@ app.on('will-quit', () => {
 
 app.on('quit', () => {
 });
+
 
 //# sourceMappingURL=index.js.map
